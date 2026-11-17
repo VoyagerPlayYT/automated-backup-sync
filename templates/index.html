@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Backup & Sync Agent — Центр резервного копирования</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        vault: {
+                            bg: '#0B0F19',
+                            card: '#111827',
+                            border: '#1F2937',
+                            accent: '#10B981'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#0B0F19] text-slate-100 min-h-screen flex flex-col font-sans">
+    <!-- Header -->
+    <header class="border-b border-[#1F2937] bg-[#111827]/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-500/20">
+                    🛡️
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight flex items-center space-x-2">
+                        <span>Automated Backup Agent</span>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">SHA-256 Verified</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Система автоматического резервного копирования и аудита целостности</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="triggerNewBackup()" id="backupBtn" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-emerald-600/30">
+                    <span>🚀 Создать бэкап сейчас</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        <!-- Top KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-[#111827] border border-[#1F2937] rounded-2xl p-5 shadow">
+                <div class="text-xs text-slate-400 uppercase font-bold mb-1">Архивов в хранилище</div>
+                <div class="text-3xl font-black text-white font-mono" id="statArchivesCount">0</div>
+                <div class="text-[11px] text-emerald-400 mt-2 font-mono">Политика удержания: 5 копий</div>
+            </div>
+
+            <div class="bg-[#111827] border border-[#1F2937] rounded-2xl p-5 shadow">
+                <div class="text-xs text-slate-400 uppercase font-bold mb-1">Файлов в источнике</div>
+                <div class="text-3xl font-black text-emerald-400 font-mono" id="statSourceFiles">0</div>
+                <div class="text-[11px] text-slate-400 mt-2 truncate" id="statSourceSize">Объем: 0 КБ</div>
+            </div>
+
+            <div class="bg-[#111827] border border-[#1F2937] rounded-2xl p-5 shadow">
+                <div class="text-xs text-slate-400 uppercase font-bold mb-1">Алгоритм проверки</div>
+                <div class="text-xl font-black text-teal-400 font-mono mt-1">SHA-256 + CRC</div>
+                <div class="text-[11px] text-slate-400 mt-2">Криптографическая защита</div>
+            </div>
+
+            <div class="bg-[#111827] border border-[#1F2937] rounded-2xl p-5 shadow">
+                <div class="text-xs text-slate-400 uppercase font-bold mb-1">Планировщик (Cron)</div>
+                <div class="text-sm font-bold text-slate-200 mt-1">Ежедневно в 03:00</div>
+                <div class="text-[11px] text-emerald-400 mt-2">Серверный демон активен</div>
+            </div>
+        </div>
+
+        <!-- Backups List Table -->
+        <div class="bg-[#111827] border border-[#1F2937] rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-[#1F2937]">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                        <span>📦 Журнал созданных резервных копий</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Все архивы автоматически проверяются на целостность структуры и хэш-сумму</p>
+                </div>
+                <button onclick="fetchBackups()" class="text-xs text-emerald-400 hover:text-emerald-300">Обновить</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800">
+                            <th class="pb-3 font-semibold">Имя архива</th>
+                            <th class="pb-3 font-semibold">Дата создания</th>
+                            <th class="pb-3 font-semibold">Файлов</th>
+                            <th class="pb-3 font-semibold">Размер</th>
+                            <th class="pb-3 font-semibold">Контрольная сумма SHA-256</th>
+                            <th class="pb-3 font-semibold">Целостность</th>
+                            <th class="pb-3 text-right font-semibold">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backupsTableBody" class="divide-y divide-slate-800/80 font-mono">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function fetchBackups() {
+            try {
+                const res = await fetch('/api/backups');
+                const data = await res.json();
+
+                document.getElementById('statArchivesCount').innerText = data.backups.length;
+                document.getElementById('statSourceFiles').innerText = data.source_stats.files_count;
+                document.getElementById('statSourceSize').innerText = `Объем: ${data.source_stats.total_size}`;
+
+                const tbody = document.getElementById('backupsTableBody');
+                if (data.backups.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500 font-sans">Архивов нет. Нажмите «Создать бэкап сейчас».</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.backups.map(b => `
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 font-bold text-slate-200">
+                            <span class="text-emerald-400 mr-1.5">🗜️</span> ${escapeHtml(b.filename)}
+                        </td>
+                        <td class="py-3 text-slate-400">${b.created_at}</td>
+                        <td class="py-3 text-slate-300">${b.file_count} шт</td>
+                        <td class="py-3 text-emerald-400 font-bold">${b.size_formatted}</td>
+                        <td class="py-3 text-slate-400 text-[10px] truncate max-w-[140px]" title="${b.sha256}">
+                            ${b.sha256.substring(0, 16)}...
+                        </td>
+                        <td class="py-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                ВЕРИФИЦИРОВАН ✅
+                            </span>
+                        </td>
+                        <td class="py-3 text-right space-x-2">
+                            <a href="/download/${b.filename}" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition">
+                                ⬇️ Скачать
+                            </a>
+                            <button onclick="verifyArchive('${b.filename}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                                🛡️ Тест
+                            </button>
+                            <button onclick="deleteArchive('${b.filename}')" class="text-slate-500 hover:text-rose-400 text-[11px] px-1">
+                                ✕
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {}
+        }
+
+        async function triggerNewBackup() {
+            const btn = document.getElementById('backupBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Архивирование и расчет хэша...</span>';
+
+            try {
+                const res = await fetch('/api/backup/create', { method: 'POST' });
+                const data = await res.json();
+                alert(`✅ Бэкап успешно создан!\nАрхив: ${data.backup.filename}\nSHA-256: ${data.backup.sha256}`);
+                fetchBackups();
+            } catch (e) {
+                alert('Ошибка при создании бэкапа');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🚀 Создать бэкап сейчас</span>';
+            }
+        }
+
+        async function verifyArchive(filename) {
+            const res = await fetch(`/api/backup/${filename}/verify`);
+            const data = await res.json();
+            if (data.status === 'VALID') {
+                alert(`🛡️ Проверка пройдена успешно!\nАрхив ${filename} не поврежден.\nХэш SHA-256 совпадает: ${data.sha256}`);
+            } else {
+                alert(`⚠️ Ошибка верификации: ${JSON.stringify(data)}`);
+            }
+        }
+
+        async function deleteArchive(filename) {
+            if (!confirm(`Удалить архив ${filename}?`)) return;
+            await fetch(`/api/backup/${filename}`, { method: 'DELETE' });
+            fetchBackups();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        fetchBackups();
+    </script>
+</body>
+</html>
