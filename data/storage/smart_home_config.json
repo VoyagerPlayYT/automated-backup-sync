@@ -1,0 +1,1 @@
+{"hub": "HomeServer", "network": "192.168.1.1", "devices": ["camera_hall", "temp_sensor_kitchen", "router"]}
